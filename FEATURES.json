@@ -1,0 +1,104 @@
+{
+  "features": [
+    {
+      "id": "feature_001",
+      "name": "Docker Compose Infrastructure",
+      "description": "Create docker-compose.yml with PostgreSQL, llama.cpp server, and Python app services",
+      "status": "passing",
+      "test_file": null,
+      "dependencies": [],
+      "created": "2026-01-21T13:44:00Z",
+      "completed": "2026-01-21T13:53:00Z"
+    },
+    {
+      "id": "feature_002",
+      "name": "PostgreSQL Initialization",
+      "description": "Set up PostgreSQL init scripts with pgvector extension, schema, and sample data",
+      "status": "passing",
+      "test_file": null,
+      "dependencies": ["feature_001"],
+      "created": "2026-01-21T13:44:00Z",
+      "completed": "2026-01-21T13:53:00Z"
+    },
+    {
+      "id": "feature_003",
+      "name": "Python Dependencies",
+      "description": "Create requirements.txt with psycopg2, openai client, pgvector, and other dependencies",
+      "status": "passing",
+      "test_file": null,
+      "dependencies": [],
+      "created": "2026-01-21T13:44:00Z",
+      "completed": "2026-01-21T13:54:00Z"
+    },
+    {
+      "id": "feature_004",
+      "name": "Database Connection and LLM Client",
+      "description": "Create Python chat script foundation with database connection and LLM client setup",
+      "status": "passing",
+      "test_file": null,
+      "dependencies": ["feature_003"],
+      "created": "2026-01-21T13:44:00Z",
+      "completed": "2026-01-21T13:55:00Z"
+    },
+    {
+      "id": "feature_005",
+      "name": "Natural Language to SQL",
+      "description": "Implement natural language to SQL query generation feature",
+      "status": "passing",
+      "test_file": null,
+      "dependencies": ["feature_004"],
+      "created": "2026-01-21T13:44:00Z",
+      "completed": "2026-01-21T13:55:00Z"
+    },
+    {
+      "id": "feature_006",
+      "name": "Chat History Storage",
+      "description": "Implement persistent chat history storage in PostgreSQL",
+      "status": "passing",
+      "test_file": null,
+      "dependencies": ["feature_004"],
+      "created": "2026-01-21T13:44:00Z",
+      "completed": "2026-01-21T13:55:00Z"
+    },
+    {
+      "id": "feature_007",
+      "name": "RAG with pgvector",
+      "description": "Implement RAG with pgvector for database content retrieval",
+      "status": "passing",
+      "test_file": null,
+      "dependencies": ["feature_004"],
+      "created": "2026-01-21T13:44:00Z",
+      "completed": "2026-01-21T13:55:00Z"
+    },
+    {
+      "id": "feature_008",
+      "name": "CLI Interface",
+      "description": "Create interactive CLI interface with command handling and chat loop",
+      "status": "passing",
+      "test_file": null,
+      "dependencies": ["feature_005", "feature_006", "feature_007"],
+      "created": "2026-01-21T13:44:00Z",
+      "completed": "2026-01-21T13:55:00Z"
+    },
+    {
+      "id": "feature_009",
+      "name": "Environment Configuration",
+      "description": "Create .env.example file for configuration (model path, DB credentials, etc.)",
+      "status": "passing",
+      "test_file": null,
+      "dependencies": [],
+      "created": "2026-01-21T13:44:00Z",
+      "completed": "2026-01-21T13:55:00Z"
+    },
+    {
+      "id": "feature_010",
+      "name": "Documentation",
+      "description": "Create README.md with setup instructions and usage examples",
+      "status": "passing",
+      "test_file": null,
+      "dependencies": ["feature_008"],
+      "created": "2026-01-21T13:44:00Z",
+      "completed": "2026-01-21T14:08:00Z"
+    }
+  ]
+}

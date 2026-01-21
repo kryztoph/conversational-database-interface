@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: cgi-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cgiuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cgipass}
+      POSTGRES_DB: ${POSTGRES_DB:-cgidb}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cgiuser}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cgi-network
+
+  llama:
+    image: ghcr.io/ggerganov/llama.cpp:server
+    container_name: cgi-llama
+    command:
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8080"
+      - "-m"
+      - "/models/${MODEL_FILE:-model.gguf}"
+      - "-c"
+      - "${CONTEXT_SIZE:-4096}"
+      - "--n-gpu-layers"
+      - "${GPU_LAYERS:-0}"
+    ports:
+      - "${LLAMA_PORT:-8080}:8080"
+    volumes:
+      - ${MODEL_PATH:-./models}:/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - cgi-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Remove the deploy section above if not using GPU
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cgi-app
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-cgiuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cgipass}
+      POSTGRES_DB: ${POSTGRES_DB:-cgidb}
+      LLAMA_API_URL: http://llama:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      llama:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    networks:
+      - cgi-network
+    command: python chat.py
+
+volumes:
+  postgres_data:
+
+networks:
+  cgi-network:
+    driver: bridge
