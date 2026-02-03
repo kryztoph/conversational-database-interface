@@ -35,3 +35,6 @@ Thumbs.db
 # Project specific
 README_NEW.md
 README_APPEND.txt
+
+# Runtime files
+*.pid

@@ -45,13 +45,13 @@ services:
       start_period: 60s
     networks:
       - cgi-network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+#    deploy:
+#      resources:
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: all
+#              capabilities: [gpu]
     # Remove the deploy section above if not using GPU
 
   app:

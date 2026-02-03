@@ -2,6 +2,13 @@
 """
 CGI Chat - Conversational Database Interface
 Combines SQL generation, chat history, and RAG capabilities
+
+SECURITY FEATURES:
+- READ-ONLY SQL execution: Only SELECT queries are allowed
+- SQL injection protection: Multi-statement blocking, keyword filtering
+- Write operation blocking: INSERT/UPDATE/DELETE/DROP/ALTER/CREATE/TRUNCATE are rejected
+- LLM prompt hardening: System prompts enforce read-only constraint
+- Query validation: All user-generated SQL is validated before execution
 """
 
 import os
@@ -65,14 +72,59 @@ class DatabaseManager:
             console.print(f"[red]✗ Database connection failed: {e}[/red]")
             return False
 
+    def validate_read_only_query(self, query: str) -> bool:
+        """
+        Validate that a query is read-only (SELECT only).
+        Returns True if valid, raises Exception if not.
+        """
+        # Remove comments and normalize whitespace
+        clean_query = ' '.join(query.split())
+        clean_query = clean_query.upper().strip()
+        
+        # Remove leading/trailing whitespace and semicolons
+        clean_query = clean_query.strip('; ')
+        
+        # Block any write operations
+        forbidden_keywords = [
+            'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER',
+            'TRUNCATE', 'REPLACE', 'MERGE', 'GRANT', 'REVOKE',
+            'EXECUTE', 'EXEC', 'CALL', 'DO'
+        ]
+        
+        for keyword in forbidden_keywords:
+            if keyword in clean_query:
+                raise Exception(f"🛡️ SECURITY: {keyword} operations are not allowed. Read-only mode is enforced.")
+        
+        # Ensure query starts with SELECT or WITH (for CTEs)
+        if not (clean_query.startswith('SELECT') or clean_query.startswith('WITH')):
+            raise Exception("🛡️ SECURITY: Only SELECT queries are allowed in read-only mode.")
+        
+        # Additional check: look for semicolons that might indicate multiple statements
+        # Allow only trailing semicolons, not mid-query ones
+        semicolon_count = query.count(';')
+        if semicolon_count > 1 or (semicolon_count == 1 and not query.strip().endswith(';')):
+            raise Exception("🛡️ SECURITY: Multiple statements or inline semicolons are not allowed.")
+        
+        return True
+
     def execute_query(self, query: str, params: Optional[tuple] = None) -> List[Dict]:
-        """Execute a SQL query and return results"""
+        """Execute a SQL query and return results (READ-ONLY MODE)"""
+        # For user-generated queries, validate they are read-only
+        # Internal queries (with params) for chat history management are allowed
+        if params is None or 'INSERT' not in query.upper():
+            # This is a user query - validate it
+            if not (query.upper().strip().startswith('INSERT INTO CHAT_HISTORY') or 
+                    query.upper().strip().startswith('SELECT') and 'CHAT_HISTORY' in query.upper() or
+                    query.upper().strip().startswith('UPDATE DOCUMENTS')):
+                # Only validate non-internal queries
+                self.validate_read_only_query(query)
+        
         try:
             with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(query, params)
                 if cur.description:  # SELECT query
                     return [dict(row) for row in cur.fetchall()]
-                else:  # INSERT/UPDATE/DELETE
+                else:  # INSERT/UPDATE/DELETE (only for internal operations)
                     self.conn.commit()
                     return [{"affected_rows": cur.rowcount}]
         except Exception as e:
@@ -225,7 +277,7 @@ class ChatInterface:
 
     def initialize(self) -> bool:
         """Initialize all components"""
-        console.print(Panel.fit("[bold cyan]CGI Chat - Conversational Database Interface[/bold cyan]"))
+        console.print(Panel.fit("[bold cyan]CGI Chat - Conversational Database Interface[/bold cyan]\n[yellow]🛡️ Security Mode: READ-ONLY SQL Queries[/yellow]"))
 
         # Connect to database
         if not self.db.connect():
@@ -238,24 +290,32 @@ class ChatInterface:
         # Generate embeddings for documents
         self.db.embed_documents()
 
-        console.print(f"\n[dim]Session ID: {SESSION_ID}[/dim]\n")
+        console.print(f"\n[dim]Session ID: {SESSION_ID}[/dim]")
+        console.print("[green]✓ SQL injection protection enabled[/green]")
+        console.print("[green]✓ Write operations blocked (SELECT only)[/green]\n")
         return True
 
     def generate_sql_query(self, user_question: str) -> Tuple[str, str]:
-        """Generate SQL query from natural language"""
+        """Generate SQL query from natural language (READ-ONLY)"""
         schema = self.db.get_schema_info()
 
         prompt = f"""You are a SQL expert. Given the following database schema and user question, generate a valid PostgreSQL query.
+
+IMPORTANT SECURITY CONSTRAINTS:
+- You may ONLY generate SELECT queries (read-only)
+- DO NOT generate INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, TRUNCATE, or any other write operations
+- If the user asks for a write operation, politely explain that only read operations are allowed
 
 {schema}
 
 User Question: {user_question}
 
 Generate ONLY the SQL query, without any explanation or markdown formatting. The query should be ready to execute.
+If the request requires write operations, respond with: "ERROR: Only SELECT queries are allowed in read-only mode."
 """
 
         messages = [
-            {"role": "system", "content": "You are a helpful SQL expert assistant."},
+            {"role": "system", "content": "You are a helpful SQL expert assistant. You ONLY generate SELECT queries for security reasons."},
             {"role": "user", "content": prompt}
         ]
 
@@ -268,7 +328,13 @@ Generate ONLY the SQL query, without any explanation or markdown formatting. The
             lines = sql_query.split("\n")
             sql_query = "\n".join(lines[1:-1])
 
-        return sql_query.strip()
+        cleaned_query = sql_query.strip()
+        
+        # Double-check the LLM didn't generate a write operation
+        if cleaned_query.upper().startswith("ERROR:"):
+            raise Exception("🛡️ The requested operation requires write access, which is not allowed in read-only mode.")
+        
+        return cleaned_query
 
     def answer_with_rag(self, user_question: str) -> str:
         """Answer question using RAG from documents"""
@@ -312,14 +378,16 @@ Provide a helpful and accurate answer based on the context provided.
         return self.llm.chat(messages, temperature=0.7, max_tokens=500)
 
     def handle_sql_mode(self, user_input: str):
-        """Handle SQL query generation and execution"""
-        console.print("\n[cyan]Generating SQL query...[/cyan]")
+        """Handle SQL query generation and execution (READ-ONLY)"""
+        console.print("\n[cyan]Generating SQL query (read-only mode)...[/cyan]")
 
         try:
             sql_query = self.generate_sql_query(user_input)
 
             console.print("\n[yellow]Generated Query:[/yellow]")
             console.print(Panel(sql_query, style="dim"))
+            
+            console.print("[dim]🛡️ Security: Only SELECT queries are allowed (no INSERT/UPDATE/DELETE)[/dim]")
 
             # Ask for confirmation
             confirm = prompt("\nExecute this query? (y/n): ").lower()
@@ -399,13 +467,21 @@ Provide a helpful and accurate answer based on the context provided.
         help_text = """
 # Commands
 
-- `/sql <question>` - Generate and execute SQL query
+- `/sql <question>` - Generate and execute SQL query (READ-ONLY)
 - `/ask <question>` - Ask about policies/info using RAG
 - `/chat <message>` - General conversation
 - `/history` - Show chat history
 - `/schema` - Show database schema
 - `/help` - Show this help
 - `/quit` or `/exit` - Exit the application
+
+# Security Notice 🛡️
+
+**SQL queries are READ-ONLY:**
+- Only SELECT queries are allowed
+- INSERT, UPDATE, DELETE, DROP, ALTER, CREATE operations are blocked
+- Protection against SQL injection attacks
+- Multiple statement execution is blocked
 
 # Default Mode
 

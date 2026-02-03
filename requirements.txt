@@ -4,6 +4,7 @@ pgvector==0.2.5
 
 # LLM Client (OpenAI-compatible)
 openai==1.54.5
+httpx<0.28  # Required for openai 1.54.5 compatibility
 
 # Embedding models
 sentence-transformers>=3.0.0
