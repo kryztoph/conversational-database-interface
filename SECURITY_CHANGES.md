@@ -4,6 +4,8 @@
 **Modified by:** Adolph (AI Security Assistant)  
 **File:** `chat.py`
 
+**Update:** 2026-02-13 - Fixed false positive in keyword validation (word boundaries)
+
 ## Summary
 
 The CGI Chat application has been hardened to prevent SQL injection attacks and restrict database access to read-only operations.
@@ -17,6 +19,7 @@ The CGI Chat application has been hardened to prevent SQL injection attacks and 
 - **Enforces SELECT-only:** Queries must start with SELECT or WITH (for CTEs)
 - **Prevents multi-statement injection:** Blocks multiple semicolons or inline statement separators
 - **Normalizes input:** Removes comments and whitespace before validation
+- **Word boundary matching (2026-02-13):** Uses regex `\b` to match whole words only, preventing false positives (e.g., "DO" blocks SQL `DO` but not "DOCUMENTS")
 
 ### 2. Modified Query Execution
 **Location:** `DatabaseManager.execute_query()`

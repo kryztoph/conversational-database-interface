@@ -77,6 +77,8 @@ class DatabaseManager:
         Validate that a query is read-only (SELECT only).
         Returns True if valid, raises Exception if not.
         """
+        import re
+        
         # Remove comments and normalize whitespace
         clean_query = ' '.join(query.split())
         clean_query = clean_query.upper().strip()
@@ -84,7 +86,7 @@ class DatabaseManager:
         # Remove leading/trailing whitespace and semicolons
         clean_query = clean_query.strip('; ')
         
-        # Block any write operations
+        # Block any write operations (use word boundaries to avoid false positives)
         forbidden_keywords = [
             'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER',
             'TRUNCATE', 'REPLACE', 'MERGE', 'GRANT', 'REVOKE',
@@ -92,7 +94,9 @@ class DatabaseManager:
         ]
         
         for keyword in forbidden_keywords:
-            if keyword in clean_query:
+            # Use word boundary regex to match whole words only (e.g., "DO" but not "DOCUMENTS")
+            pattern = r'\b' + re.escape(keyword) + r'\b'
+            if re.search(pattern, clean_query):
                 raise Exception(f"🛡️ SECURITY: {keyword} operations are not allowed. Read-only mode is enforced.")
         
         # Ensure query starts with SELECT or WITH (for CTEs)

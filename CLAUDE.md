@@ -28,8 +28,8 @@ CGI Chat is a conversational database interface that combines:
 
 ### Run with Docker (full stack)
 ```bash
-docker-compose up -d
-docker-compose exec app python chat.py
+docker compose up -d
+docker compose exec app python chat.py
 ```
 
 ### Run locally (development)
@@ -45,10 +45,10 @@ python chat.py
 ### Database operations
 ```bash
 # Reset database (drop and recreate)
-docker-compose down -v && docker-compose up -d
+docker compose down -v && docker compose up -d
 
 # Connect directly to PostgreSQL
-docker-compose exec postgres psql -U cgiuser -d cgidb
+docker compose exec postgres psql -U cgiuser -d cgidb
 ```
 
 ## Configuration
