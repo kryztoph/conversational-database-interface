@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Zscaler certificate (set via: docker compose build --build-arg CERT_FILE=Zscaler_Root_CA.cer)
+# Zscaler certificate (set via: docker compose build --build-arg CERT_FILE=Zscaler_Root_CA.crt)
 ARG CERT_FILE=
 COPY . /tmp/build-context/
 RUN if [ -n "$CERT_FILE" ] && [ -f "/tmp/build-context/$CERT_FILE" ]; then \
