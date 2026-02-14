@@ -65,6 +65,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-cgiuser}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cgipass}
       POSTGRES_DB: ${POSTGRES_DB:-cgidb}
+      POSTGRES_ADMIN_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-}
       LLAMA_API_URL: http://llama:8080
     depends_on:
       postgres:

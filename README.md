@@ -268,6 +268,7 @@ POSTGRES_PORT=5432
 POSTGRES_USER=cgiuser
 POSTGRES_PASSWORD=cgipass
 POSTGRES_DB=cgidb
+POSTGRES_ADMIN_PASSWORD=    # Optional: for auto-recovery if cgiuser gets dropped
 
 # LLM Server
 LLAMA_API_URL=http://llama:8080  # Use 'http://localhost:8080' for local
@@ -280,6 +281,8 @@ EMBEDDING_MODEL=all-MiniLM-L6-v2  # Sentence transformer (384 dimensions)
 ```
 
 **Important**: If you change `EMBEDDING_MODEL` to one with different dimensions, you must update the vector column dimension in `postgres/init.sql` and recreate the database.
+
+**Auto-Recovery**: The application automatically checks for the database user on startup. If `cgiuser` is missing and `POSTGRES_ADMIN_PASSWORD` is set, it will be recreated automatically.
 
 ### Docker Compose
 

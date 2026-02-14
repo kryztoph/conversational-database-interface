@@ -15,5 +15,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Copy and set entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Set entrypoint to check user before running app
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
 # Run the chat application
 CMD ["python", "chat.py"]
